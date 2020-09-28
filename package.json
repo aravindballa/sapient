@@ -1,0 +1,19 @@
+{
+  "name": "exportwise",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Aravind Balla <bsaaravind@gmail.com> (https://aravindballa.com)",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^4.1.0",
+    "cheerio": "^1.0.0-rc.3",
+    "keyv": "^4.0.3",
+    "keyv-file": "^0.2.0",
+    "puppeteer": "^5.3.1"
+  }
+}
