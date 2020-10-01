@@ -1,10 +1,11 @@
 {
-  "name": "exportwise",
+  "name": "sapient",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "kindle": "node src/get-highlights.js",
+    "notion": "node src/save-highlights-notion.js"
   },
   "keywords": [],
   "author": "Aravind Balla <bsaaravind@gmail.com> (https://aravindballa.com)",

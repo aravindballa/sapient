@@ -37,7 +37,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const browser = await puppeteer.launch();
   const kindlePage = await browser.newPage();
-  const cookiesArr = require(`./${KINDLE_COOKIE_PATH}`);
+  const cookiesArr = require(`../${KINDLE_COOKIE_PATH}`);
   if (cookiesArr.length !== 0) {
     for (let cookie of cookiesArr) {
       await kindlePage.setCookie(cookie);
