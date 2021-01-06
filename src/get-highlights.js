@@ -57,6 +57,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     })
     .get();
 
+  /**Book titles */
+  const allTitles = [];
   for (const bookId of allBookIds) {
     await kindlePage.click(`#${bookId}`);
     await kindlePage.waitForSelector('h3.kp-notebook-metadata');
@@ -65,6 +67,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     const $ = cheerio.load(html);
 
     const title = $('h3.kp-notebook-metadata').text();
+    allTitles.push(title);
 
     // TODO get notes as well
     const highlights = $('span#highlight')
@@ -89,6 +92,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
     console.log(title, '- Done!');
   }
+  await keyvStore.set('allTitles', allTitles);
 
   await kindlePage.close();
   await browser.close();

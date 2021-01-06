@@ -10,6 +10,16 @@ const NOTION_URL =
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// Heplers
+const cursorAtEnd = async (page) => {
+  await page.evaluate(() => {
+    document.querySelector('div.notion-page-content').lastChild.click();
+  });
+  // await page.keyboard.press('Escape', { delay: 200 });
+  await page.keyboard.press('Enter', { delay: 200 });
+  await page.keyboard.press('Enter', { delay: 200 });
+};
+
 (async () => {
   const keyvStore = new Keyv({
     store: new KeyvFile({
@@ -36,7 +46,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   // await sleep(5 * 1000);
   console.log('Starting browser...');
 
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({ headless: false });
   const notionPage = await browser.newPage();
   try {
     const cookiesArr = require(`../${NOTION_COOKIE_PATH}`);
@@ -47,54 +57,86 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
       console.log('Session has been loaded in the browser');
     }
     await notionPage.goto(NOTION_URL, { waitUntil: 'networkidle0' });
-    const html = await notionPage.content();
-    const $ = cheerio.load(html);
 
-    const lastTextBlockId = $('div.notion-text-block').last().data('block-id');
-    console.log(lastTextBlockId);
+    // const html = await notionPage.content();
+    // const $ = cheerio.load(html);
 
-    await notionPage.click(`[data-block-id="${lastTextBlockId}"]`);
+    // const lastTextBlockId = $('div.notion-text-block').last().data('block-id');
+    // console.log(lastTextBlockId);
+
+    // await notionPage.click(`[data-block-id="${lastTextBlockId}"]`);
+
     // clear everything
     // await notionPage.keyboard.down('MetaLeft');
     // await notionPage.keyboard.press('KeyA', { delay: 200 });
     // await notionPage.keyboard.press('KeyA', { delay: 200 });
     // await notionPage.keyboard.up('MetaLeft');
     // await notionPage.keyboard.press('Delete', { delay: 200 });
-    await notionPage.keyboard.press('Enter', { delay: 200 });
+    // await notionPage.keyboard.press('Enter', { delay: 200 });
 
     // TODO get the last sycned time and get all the highlights that were not synced
 
-    // get content in Markdown
-    const allRecords =
-      (await keyvStore.get('The End of Jobs: Money, Meaning and Freedom Without the 9-to-5')) || [];
+    const allTitles = (await keyvStore.get('allTitles')) || [];
+    console.log(allTitles);
+    for (const title of allTitles) {
+      console.log('starting' + title);
+      /**
+       * Strategy (works for Roam too)
+       * Make a page for each book. If not found `+Book Name Enter`
+       * On Loop
+       *  Click on the book
+       *  Go to last text block
+       *  Press Enter
+       *  Add content
+       *  Come back
+       */
+      // Navigate to the book page
+      const [bookBlock] = await notionPage.$x(`//a[contains(., '${title}')]`);
+      if (bookBlock) {
+        await Promise.all([notionPage.waitForNavigation(), bookBlock.click()]);
+      } else {
+        // Create the new book page
+        await cursorAtEnd(notionPage);
+        await notionPage.keyboard.type('+' + title, {
+          delay: 200,
+        });
+        await notionPage.keyboard.press('Enter', { delay: 200 });
+        const [newBookBlock] = await notionPage.$x(`//a[contains(., '${title}')]`);
+        if (newBookBlock) {
+          await Promise.all([notionPage.waitForNavigation(), newBookBlock.click()]);
+          await notionPage.keyboard.press('Enter', { delay: 200 });
+        }
+      }
 
-    // TODO do it for each page
-    /**
-     * Strategy (works for Roam too)
-     * Make a page for each book. If not found `+Book Name Enter`
-     * On Loop
-     *  Click on the book
-     *  Go to last text block
-     *  Press Enter
-     *  Add content
-     *  Come back
-     */
-    const contentToType = [`## The End of Jobs: Money, Meaning and Freedom Without the 9-to-5`];
-    allRecords
-      .filter((rec) => !!rec.highlights.length)
-      .forEach((rec) => {
-        contentToType.push(`### _Synced on ${new Date(rec.synced).toDateString()}_`);
-        contentToType.push(...rec.highlights);
-      });
-
-    // add content
-    await notionPage.keyboard.press('Enter', { delay: 200 });
-    for (const content of contentToType) {
-      await notionPage.keyboard.type(content, {
-        delay: 100,
-      });
+      // Come back to the main page
+      await notionPage.keyboard.down('MetaLeft');
+      await notionPage.keyboard.press('[', { delay: 100 });
+      await notionPage.keyboard.up('MetaLeft');
       await notionPage.keyboard.press('Enter', { delay: 100 });
     }
+
+    // get content in Markdown
+    // const allRecords =
+    //   (await keyvStore.get('The End of Jobs: Money, Meaning and Freedom Without the 9-to-5')) || [];
+
+    // // TODO do it for each page
+
+    // const contentToType = [`## The End of Jobs: Money, Meaning and Freedom Without the 9-to-5`];
+    // allRecords
+    //   .filter((rec) => !!rec.highlights.length)
+    //   .forEach((rec) => {
+    //     contentToType.push(`### _Synced on ${new Date(rec.synced).toDateString()}_`);
+    //     contentToType.push(...rec.highlights);
+    //   });
+
+    // // add content
+    // await notionPage.keyboard.press('Enter', { delay: 200 });
+    // for (const content of contentToType) {
+    //   await notionPage.keyboard.type(content, {
+    //     delay: 100,
+    //   });
+    //   await notionPage.keyboard.press('Enter', { delay: 100 });
+    // }
 
     await sleep(5 * 1000);
   } catch (err) {
@@ -103,37 +145,4 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     await notionPage.close();
     await browser.close();
   }
-
-  // for (const bookId of allBookIds) {
-  //   await notionPage.click(`#${bookId}`);
-  //   await notionPage.waitForSelector('h3.kp-notebook-metadata');
-
-  //   const html = await notionPage.content();
-  //   const $ = cheerio.load(html);
-
-  //   const title = $('h3.kp-notebook-metadata').text();
-
-  //   // TODO get notes as well
-  //   const highlights = $('span#highlight')
-  //     .map((i, el) => {
-  //       return cheerio.load(el).text();
-  //     })
-  //     .get();
-
-  //   // await keyvStore.clear();
-  //   /**
-  //    * allRecords = [{highlights, synced}]
-  //    */
-  //   const allRecords = (await keyvStore.get(title)) || [];
-
-  //   const existingHighlights = allRecords.reduce((eh, ar) => [...eh, ...ar.highlights], []);
-  //   const newHighlights = highlights.filter((hl) => existingHighlights.indexOf(hl) === -1);
-
-  //   if (newHighlights.length) {
-  //     allRecords.push({ highlights: newHighlights, synced: new Date().getTime() });
-  //     await keyvStore.set(title, allRecords);
-  //   }
-
-  //   console.log(title, '- Done!');
-  // }
 })();
