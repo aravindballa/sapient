@@ -1,0 +1,43 @@
+name: Sync
+
+on:
+  schedule:
+    # at 21:30 hrs everyday
+    - cron: '0 16 * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [13.x]
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Get yarn cache
+        id: yarn-cache
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+      - uses: actions/cache@v1
+        with:
+          path: ${{ steps.yarn-cache.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Do the thing
+        run: |
+          yarn kindle
+          yarn roam
+        env:
+          CI: true
+          ROAM_EMAIL: ${{ secrets.ROAM_EMAIL }}
+          ROAM_PASSWORD: ${{ secrets.ROAM_PASSWORD }}
+          VERSION: ${{ secrets.VERSION }}
+          APP_NAME: ${{ secrets.APP_NAME }}
+          KINDLE_EMAIL: ${{ secrets.KINDLE_EMAIL }}
+          KINDLE_PASSWORD: ${{ secrets.KINDLE_PASSWORD }} 
