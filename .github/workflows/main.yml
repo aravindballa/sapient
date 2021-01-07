@@ -40,4 +40,10 @@ jobs:
           VERSION: ${{ secrets.VERSION }}
           APP_NAME: ${{ secrets.APP_NAME }}
           KINDLE_EMAIL: ${{ secrets.KINDLE_EMAIL }}
-          KINDLE_PASSWORD: ${{ secrets.KINDLE_PASSWORD }} 
+          KINDLE_PASSWORD: ${{ secrets.KINDLE_PASSWORD }}
+          
+          
+      - name: Commit changes
+        uses: elstudio/actions-js-build/commit@v3
+        with:
+          commitMessage: synced
