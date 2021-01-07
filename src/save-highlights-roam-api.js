@@ -4,6 +4,7 @@ const Keyv = require('keyv');
 const KeyvFile = require('keyv-file').KeyvFile;
 
 const appName = `${process.env.APP_NAME} v${process.env.VERSION}`;
+const LAST_SYNC_KEY = 'lastSyncedToRoam';
 
 (async () => {
   const keyvStore = new Keyv({
@@ -24,12 +25,15 @@ const appName = `${process.env.APP_NAME} v${process.env.VERSION}`;
     children: [],
   };
 
+  const lastSyncedTime = (await keyvStore.get(LAST_SYNC_KEY)) || 0;
+
   for (const title of allTitles) {
     const allRecords = (await keyvStore.get(title)) || [];
     const bookData = { string: `[[B: ${title}]]`, children: [] };
     if (allRecords.length) {
       allRecords
         .filter((rec) => !!rec.highlights.length)
+        .filter((rec) => rec.synced > lastSyncedTime)
         .forEach((rec) => {
           bookData.children.push(...rec.highlights.map((highlight) => ({ string: highlight })));
         });
@@ -38,21 +42,24 @@ const appName = `${process.env.APP_NAME} v${process.env.VERSION}`;
     if (bookData.children.length) importObject.children.push(bookData);
   }
 
-  const api = new RoamPrivateApi(
-    'aravindballa',
-    process.env.ROAM_EMAIL,
-    process.env.ROAM_PASSWORD,
-    {
-      headless: true,
-      folder: './tmp/',
-    }
-  );
-  await api.import([importObject]);
+  console.log(importObject);
 
-  await api.close();
+  if (importObject.children.length) {
+    const api = new RoamPrivateApi(
+      'aravindballa',
+      process.env.ROAM_EMAIL,
+      process.env.ROAM_PASSWORD,
+      {
+        headless: true,
+        folder: './tmp/',
+      }
+    );
+    await api.import([importObject]);
+    await api.close();
+  } else {
+    console.log('Roam is already up to date...');
+  }
 
-  // TODO
-  // write the last synced timestamp
-  // from next time, get only highlights that are new
-  // OR ommit highlights that are oledr than last written timestamp
+  console.log('Updating the last synced timestamp');
+  await keyvStore.set(LAST_SYNC_KEY, new Date().getTime());
 })();

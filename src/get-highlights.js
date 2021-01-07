@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
 const fs = require('fs');
@@ -8,6 +10,37 @@ const KINDLE_COOKIE_PATH = 'cookies/kindle.json';
 const KINDLE_URL = 'https://read.amazon.com/notebook';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const saveCookies = async (page) => {
+  const cookiesObject = await page.cookies();
+  fs.writeFileSync(KINDLE_COOKIE_PATH, JSON.stringify(cookiesObject, null, 2), {
+    encoding: 'utf-8',
+  });
+};
+
+const login = async () => {
+  const browser = await puppeteer.launch({ headless: false });
+  const page = await browser.newPage();
+  await page.goto(KINDLE_URL);
+
+  await page.waitForSelector('input[type="email"]');
+  await page.focus('input[type="email"]');
+  await page.keyboard.type(process.env.KINDLE_EMAIL);
+
+  await page.waitForSelector('input[type="password"]');
+  await page.focus('input[type="password"]');
+  await page.keyboard.type(process.env.KINDLE_PASSWORD);
+
+  await page.click('input[type="submit"]');
+
+  // await page.$eval('.bp3-button', (el) => el.click());
+  await sleep(5 * 1000);
+
+  await saveCookies(page);
+
+  await page.close();
+  await browser.close();
+};
 
 (async () => {
   const keyvStore = new Keyv({
@@ -21,21 +54,14 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   });
 
   if (!fs.existsSync(KINDLE_COOKIE_PATH)) {
-    const browser = await puppeteer.launch({ headless: false });
-    const page = await browser.newPage();
-    await page.goto(KINDLE_URL);
-    await sleep(30 * 1000);
-    const cookiesObject = await page.cookies();
-    fs.writeFileSync(KINDLE_COOKIE_PATH, JSON.stringify(cookiesObject, null, 2), {
-      encoding: 'utf-8',
-    });
-    await page.close();
-    await browser.close();
+    await login();
   }
   await sleep(5 * 1000);
   console.log('Starting browser...');
 
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    headless: false,
+  });
   const kindlePage = await browser.newPage();
   const cookiesArr = require(`../${KINDLE_COOKIE_PATH}`);
   if (cookiesArr.length !== 0) {
@@ -45,6 +71,22 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     console.log('Session has been loaded in the browser');
   }
   await kindlePage.goto(KINDLE_URL, { waitUntil: 'networkidle0' });
+  const cookieExpired = await kindlePage.$('input[type="password"]');
+  if (cookieExpired) {
+    await kindlePage.focus('input[type="email"]');
+    await kindlePage.keyboard.type(process.env.KINDLE_EMAIL);
+
+    await kindlePage.focus('input[type="password"]');
+    await kindlePage.keyboard.type(process.env.KINDLE_PASSWORD);
+
+    await kindlePage.click('input[type="submit"]');
+
+    await sleep(5 * 1000);
+
+    await saveCookies(kindlePage);
+  }
+
+  await kindlePage.waitForSelector('div.kp-notebook-library-each-book');
   const html = await kindlePage.content();
   const $ = cheerio.load(html);
 
