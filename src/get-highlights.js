@@ -19,7 +19,7 @@ const saveCookies = async (page) => {
 };
 
 const login = async () => {
-  const browser = await puppeteer.launch({ headless: false });
+  const browser = await puppeteer.launch();
   const page = await browser.newPage();
   await page.goto(KINDLE_URL);
 
@@ -59,9 +59,7 @@ const login = async () => {
   await sleep(5 * 1000);
   console.log('Starting browser...');
 
-  const browser = await puppeteer.launch({
-    headless: false,
-  });
+  const browser = await puppeteer.launch();
   const kindlePage = await browser.newPage();
   const cookiesArr = require(`../${KINDLE_COOKIE_PATH}`);
   if (cookiesArr.length !== 0) {
