@@ -3,7 +3,7 @@ name: Sync
 on:
   schedule:
     # at 21:30 hrs everyday
-    - cron: '0 16 * * *'
+    - cron: '50 9 * * *'
 
 jobs:
   build:
